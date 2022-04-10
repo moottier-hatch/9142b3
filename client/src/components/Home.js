@@ -82,8 +82,6 @@ const Home = ({ user, logout }) => {
   const addNewConvo = useCallback(
     (recipientId, message) => {
       // issue #1 -- need to set state to a different object
-      // create convoCopy
-      // use below w/ setConversation
       const convoCopy = [...conversations];
       convoCopy.forEach((convo) => {
         if (convo.otherUser.id === recipientId) {
@@ -98,7 +96,7 @@ const Home = ({ user, logout }) => {
   );
 
   const addMessageToConversation = useCallback(
-    (data) => {
+    async (data) => {
       // if sender isn't null, that means the message needs to be put in a brand new convo
       const { message, sender = null } = data;
       if (sender !== null) {
@@ -112,22 +110,71 @@ const Home = ({ user, logout }) => {
       }
 
       // issue #1 -- need to set state to a different object
-      // create convoCopy
-      // use below w/ setConversation
       const convoCopy = [...conversations];
+      let updatedConvo = null
       convoCopy.forEach((convo) => {
         if (convo.id === message.conversationId) {
+          updatedConvo = convo;
           convo.messages.push(message);
           convo.latestMessageText = message.text;
         }
       });
+
+      if (updatedConvo.otherUser.username === activeConversation) {
+        if (message.senderId === updatedConvo.otherUser.id) {
+          await readMessages(activeConversation);
+        }
+      }
+      
       setConversations(convoCopy);
     },
-    [setConversations, conversations],
+    [setConversations, conversations, activeConversation],
   );
 
-  const setActiveChat = (username) => {
+  const patchMessage = async (body) => {
+    try {
+      const response = await axios.patch("/api/messages", body);
+      return response.data;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const readMessages = async (username) => {
+    // set unread messages to read
+    // called from setActiveChat(username) and addMessageToChat()
+    const copy = conversations;
+    const activeConvo = conversations.filter((convo) =>
+      convo.otherUser.username === username
+    )[0]
+    const messages = activeConvo.messages.filter((msg) => 
+      !msg.isRead
+    );
+
+    if (messages.length) {
+      const data = await patchMessage(messages);
+      if (data) {
+        updateUnread(data);
+      }
+    }
+  };
+
+  const updateUnread = (data) => {
+    const copyConvo = [...conversations]; 
+    const idsToUpdate = data.messages.map((msg) => msg.id);
+    copyConvo.forEach((convo) => {
+      convo.messages.forEach((msg) => {
+          if (idsToUpdate.includes(msg.id)) {
+              msg.isRead = true
+          }
+      })
+    });
+    setConversations(copyConvo);
+  }
+
+  const setActiveChat = async (username) => {
     setActiveConversation(username);
+    await readMessages(username);
   };
 
   const addOnlineUser = useCallback((id) => {
