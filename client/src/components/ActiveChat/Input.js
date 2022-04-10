@@ -33,6 +33,7 @@ const Input = ({ otherUser, conversationId, user, postMessage }) => {
       recipientId: otherUser.id,
       conversationId,
       sender: conversationId ? null : user,
+      isRead: false,    // issue 2: unread status -- always send unread; no way to know read status until it arrives @ recipient
     };
     await postMessage(reqBody);
     setText('');
