@@ -82,7 +82,6 @@ const Home = ({ user, logout }) => {
   const addNewConvo = useCallback(
     (recipientId, message) => {
       // issue #1 -- need to set state to a different object
-<<<<<<< HEAD
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.otherUser.id === recipientId) {
@@ -96,15 +95,6 @@ const Home = ({ user, logout }) => {
           }
         });
         return convoCopy;
-=======
-      const convoCopy = [...conversations];
-      convoCopy.forEach((convo) => {
-        if (convo.otherUser.id === recipientId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-          convo.id = message.conversationId;
-        }
->>>>>>> a6521b7 (issue #2)
       });
     },
     [setConversations],
