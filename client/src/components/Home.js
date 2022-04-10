@@ -62,9 +62,10 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  const postMessage = (body) => {
+  // issue #1 - func not using async/await
+  const postMessage = async (body) => {
     try {
-      const data = saveMessage(body);
+      const data = await saveMessage(body);
 
       if (!body.conversationId) {
         addNewConvo(body.recipientId, data.message);
@@ -80,14 +81,18 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      conversations.forEach((convo) => {
+      // issue #1 -- need to set state to a different object
+      // create convoCopy
+      // use below w/ setConversation
+      const convoCopy = [...conversations];
+      convoCopy.forEach((convo) => {
         if (convo.otherUser.id === recipientId) {
           convo.messages.push(message);
           convo.latestMessageText = message.text;
           convo.id = message.conversationId;
         }
       });
-      setConversations(conversations);
+      setConversations(convoCopy);
     },
     [setConversations, conversations],
   );
@@ -106,13 +111,17 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
-      conversations.forEach((convo) => {
+      // issue #1 -- need to set state to a different object
+      // create convoCopy
+      // use below w/ setConversation
+      const convoCopy = [...conversations];
+      convoCopy.forEach((convo) => {
         if (convo.id === message.conversationId) {
           convo.messages.push(message);
           convo.latestMessageText = message.text;
         }
       });
-      setConversations(conversations);
+      setConversations(convoCopy);
     },
     [setConversations, conversations],
   );
