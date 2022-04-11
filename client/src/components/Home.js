@@ -83,19 +83,21 @@ const Home = ({ user, logout }) => {
     (recipientId, message) => {
       // issue #1 -- need to set state to a different object
       setConversations((prev) => {
-          const convoCopy = [...prev];
-          convoCopy.forEach((convo) => {
-            if (convo.otherUser.id === recipientId) {
-              convo.messages.push(message);
-              convo.latestMessageText = message.text;
-              convo.id = message.conversationId; 
-            }
-          });
-          return convoCopy;        
-        }
-      );
+        const convoCopy = prev.map((convo) => {
+          if (convo.otherUser.id === recipientId) {
+            const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+            convoCopy.messages.push(message);
+            convoCopy.latestMessageText = message.text;
+            convoCopy.id = message.conversationId;
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        });
+        return convoCopy;
+      });
     },
-    [setConversations, conversations],
+    [setConversations],
   );
 
   const addMessageToConversation = useCallback(
@@ -114,17 +116,20 @@ const Home = ({ user, logout }) => {
 
       // issue #1 -- need to set state to a different object
       setConversations((prev) => {
-        const convoCopy = [...conversations];
-        convoCopy.forEach((convo) => {
+        const convoCopy = prev.map((convo) => {
           if (convo.id === message.conversationId) {
-            convo.messages.push(message);
-            convo.latestMessageText = message.text;
+            const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+            convoCopy.messages.push(message);
+            convoCopy.latestMessageText = message.text;
+            return convoCopy;
+          } else {
+            return convo;
           }
         });
-        return convoCopy
+        return convoCopy;
       });
     },
-    [setConversations, conversations],
+    [setConversations],
   );
 
   const setActiveChat = (username) => {
