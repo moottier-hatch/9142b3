@@ -62,9 +62,10 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  const postMessage = (body) => {
+  // issue #1 - func not using async/await
+  const postMessage = async (body) => {
     try {
-      const data = saveMessage(body);
+      const data = await saveMessage(body);
 
       if (!body.conversationId) {
         addNewConvo(body.recipientId, data.message);
@@ -80,20 +81,22 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      conversations.forEach((convo) => {
+      // issue #1 -- need to set state to a different object
+      const convoCopy = [...conversations];
+      convoCopy.forEach((convo) => {
         if (convo.otherUser.id === recipientId) {
           convo.messages.push(message);
           convo.latestMessageText = message.text;
           convo.id = message.conversationId;
         }
       });
-      setConversations(conversations);
+      setConversations(convoCopy);
     },
     [setConversations, conversations],
   );
 
   const addMessageToConversation = useCallback(
-    (data) => {
+    async (data) => {
       // if sender isn't null, that means the message needs to be put in a brand new convo
       const { message, sender = null } = data;
       if (sender !== null) {
@@ -106,19 +109,72 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
-      conversations.forEach((convo) => {
+      // issue #1 -- need to set state to a different object
+      const convoCopy = [...conversations];
+      let updatedConvo = null
+      convoCopy.forEach((convo) => {
         if (convo.id === message.conversationId) {
+          updatedConvo = convo;
           convo.messages.push(message);
           convo.latestMessageText = message.text;
         }
       });
-      setConversations(conversations);
+
+      if (updatedConvo.otherUser.username === activeConversation) {
+        if (message.senderId === updatedConvo.otherUser.id) {
+          await readMessages(activeConversation);
+        }
+      }
+      
+      setConversations(convoCopy);
     },
-    [setConversations, conversations],
+    [setConversations, conversations, activeConversation],
   );
 
-  const setActiveChat = (username) => {
+  const patchMessage = async (body) => {
+    try {
+      const response = await axios.patch("/api/messages", body);
+      return response.data;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const readMessages = async (username) => {
+    // set unread messages to read
+    // called from setActiveChat(username) and addMessageToChat()
+    const copy = conversations;
+    const activeConvo = conversations.filter((convo) =>
+      convo.otherUser.username === username
+    )[0]
+    const messages = activeConvo.messages.filter((msg) => 
+      !msg.isRead
+    );
+
+    if (messages.length) {
+      const data = await patchMessage(messages);
+      if (data) {
+        updateUnread(data);
+      }
+    }
+  };
+
+  const updateUnread = (data) => {
+    const copyConvo = [...conversations]; 
+    const idsToUpdate = data.messages.map((msg) => msg.id);
+    copyConvo.forEach((convo) => {
+      convo.messages.forEach((msg) => {
+          if (idsToUpdate.includes(msg.id)) {
+              msg.isRead = true
+          }
+      })
+    });
+    setConversations(copyConvo);
+  }
+
+  const setActiveChat = async (username) => {
     setActiveConversation(username);
+    await readMessages(username);
   };
 
   const addOnlineUser = useCallback((id) => {
