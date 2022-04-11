@@ -82,17 +82,18 @@ const Home = ({ user, logout }) => {
   const addNewConvo = useCallback(
     (recipientId, message) => {
       // issue #1 -- need to set state to a different object
-      // create convoCopy
-      // use below w/ setConversation
-      const convoCopy = [...conversations];
-      convoCopy.forEach((convo) => {
-        if (convo.otherUser.id === recipientId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-          convo.id = message.conversationId;
+      setConversations((prev) => {
+          const convoCopy = [...prev];
+          convoCopy.forEach((convo) => {
+            if (convo.otherUser.id === recipientId) {
+              convo.messages.push(message);
+              convo.latestMessageText = message.text;
+              convo.id = message.conversationId; 
+            }
+          });
+          return convoCopy;        
         }
-      });
-      setConversations(convoCopy);
+      );
     },
     [setConversations, conversations],
   );
@@ -112,16 +113,16 @@ const Home = ({ user, logout }) => {
       }
 
       // issue #1 -- need to set state to a different object
-      // create convoCopy
-      // use below w/ setConversation
-      const convoCopy = [...conversations];
-      convoCopy.forEach((convo) => {
-        if (convo.id === message.conversationId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-        }
+      setConversations((prev) => {
+        const convoCopy = [...conversations];
+        convoCopy.forEach((convo) => {
+          if (convo.id === message.conversationId) {
+            convo.messages.push(message);
+            convo.latestMessageText = message.text;
+          }
+        });
+        return convoCopy
       });
-      setConversations(convoCopy);
     },
     [setConversations, conversations],
   );
