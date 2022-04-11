@@ -41,10 +41,10 @@ class Conversations(APIView):
                         for message in convo.messages.all()
                     ],
                 }
+                # issue 1: sort messages w/ oldest at top
+                convo_dict["messages"].sort(key=lambda msg: msg["createdAt"])
 
                 # set properties for notification count and latest message preview
-                convo_dict["latestMessageText"] = convo_dict["messages"][0]["text"]
-
                 # set a property "otherUser" so that frontend will have easier access
                 user_fields = ["id", "username", "photoUrl"]
                 if convo.user1 and convo.user1.id != user_id:
@@ -68,4 +68,5 @@ class Conversations(APIView):
                 safe=False,
             )
         except Exception as e:
+            print(e)
             return HttpResponse(status=500)
