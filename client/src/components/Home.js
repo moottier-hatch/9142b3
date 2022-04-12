@@ -142,7 +142,6 @@ const Home = ({ user, logout }) => {
   );
 
   const patchMessages = async (body) => {
-
     try {
       const response = await axios.patch("/api/messages", body);
       return response.data;
@@ -150,24 +149,6 @@ const Home = ({ user, logout }) => {
       console.error(error);
     }
   }
-
-  const readMessages = async (username) => {
-    // set unread messages to read
-    // called from setActiveChat(username) and addMessageToChat()
-    const activeConvo = conversations.filter((convo) =>
-      convo.otherUser.username === username
-    )[0]
-    const messages = activeConvo.messages.filter((msg) => 
-      !msg.isRead
-    );
-
-    if (messages.length) {
-      const data = await patchMessages(messages);
-      if (data) {
-        updateUnread(data);
-      }
-    }
-  };
 
   const updateUnread = (data) => {
     const idsToUpdate = data.messages.map((msg) => msg.id);
@@ -187,6 +168,22 @@ const Home = ({ user, logout }) => {
   }
 
   const setActiveChat = async (username) => {
+    const readMessages = async (username) => {
+      // set unread messages to read
+      const activeConvo = conversations.filter((convo) =>
+        convo.otherUser.username === username
+      )[0]
+      const messages = activeConvo.messages.filter((msg) => 
+        !msg.isRead
+      );
+  
+      if (messages.length) {
+        const data = await patchMessages(messages);
+        if (data) {
+          updateUnread(data);
+        }
+      }
+    };
     setActiveConversation(username);
     await readMessages(username);
   };
