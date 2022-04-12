@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
+import { MessageNotification } from '../Sidebar/';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -18,6 +19,10 @@ const useStyles = makeStyles((theme) => ({
     color: "#9CADC8",
     letterSpacing: -0.17,
   },
+  notificationWrap: {
+    display: "flex",
+    alignItems: "center",
+  },
 }));
 
 const ChatContent = ({ conversation }) => {
@@ -25,6 +30,7 @@ const ChatContent = ({ conversation }) => {
 
   const { otherUser } = conversation;
   const latestMessageText = conversation.id && conversation.latestMessageText;
+  const nUnread = conversation.messages.filter((msg) => !msg.isRead && msg.senderId === otherUser.id).length;
 
   return (
     <Box className={classes.root}>
@@ -36,6 +42,12 @@ const ChatContent = ({ conversation }) => {
           {latestMessageText}
         </Typography>
       </Box>
+        {
+          nUnread > 0 &&
+          <Box className={classes.notificationWrap}>
+            <MessageNotification conversation={conversation} nUnread={nUnread} />
+          </Box>
+        }
     </Box>
   );
 };

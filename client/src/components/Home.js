@@ -62,9 +62,10 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  const postMessage = (body) => {
+  // issue #1 - func not using async/await
+  const postMessage = async (body) => {
     try {
-      const data = saveMessage(body);
+      const data = await saveMessage(body);
 
       if (!body.conversationId) {
         addNewConvo(body.recipientId, data.message);
@@ -80,20 +81,27 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      conversations.forEach((convo) => {
-        if (convo.otherUser.id === recipientId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-          convo.id = message.conversationId;
-        }
+      // issue #1 -- need to set state to a different object
+      setConversations((prev) => {
+        const convoCopy = prev.map((convo) => {
+          if (convo.otherUser.id === recipientId) {
+            const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+            convoCopy.messages.push(message);
+            convoCopy.latestMessageText = message.text;
+            convoCopy.id = message.conversationId;
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        });
+        return convoCopy;
       });
-      setConversations(conversations);
     },
-    [setConversations, conversations],
+    [setConversations],
   );
 
   const addMessageToConversation = useCallback(
-    (data) => {
+    async (data) => {
       // if sender isn't null, that means the message needs to be put in a brand new convo
       const { message, sender = null } = data;
       if (sender !== null) {
@@ -106,19 +114,78 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
-      conversations.forEach((convo) => {
-        if (convo.id === message.conversationId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-        }
+      let updatedConvo = null;    // issue #2 - add unread msg if msg arrives in active convo
+      // issue #1 -- need to set state to a different object
+      setConversations((prev) => {
+        const convoCopy = prev.map((convo) => {
+          if (convo.id === message.conversationId) {
+            const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+            updatedConvo = { ...convo };    // issue #2 - add unread msg if msg arrives in active convo
+            convoCopy.messages.push(message);
+            convoCopy.latestMessageText = message.text;
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        });
+        return convoCopy;
       });
-      setConversations(conversations);
+      
+      if (updatedConvo.otherUser.username === activeConversation) {
+        if (message.senderId === updatedConvo.otherUser.id) {
+          patchMessages([data.message]);
+          updateUnread({ 'messages': [data.message] });    // format like received message
+        }
+      }
     },
-    [setConversations, conversations],
+    [setConversations, activeConversation],
   );
 
-  const setActiveChat = (username) => {
+  const patchMessages = async (body) => {
+    try {
+      const response = await axios.patch("/api/messages", body);
+      return response.data;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const updateUnread = (data) => {
+    const idsToUpdate = data.messages.map((msg) => msg.id);
+    setConversations((prev) => {
+      const conversationsCopy = prev.map((convo) => {
+        const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+        convoCopy.messages.map((msg) => {
+          if (idsToUpdate.includes(msg.id)) {
+            msg.isRead = true;
+          }
+          return msg;
+        });
+        return convoCopy;
+      });
+      return conversationsCopy;
+    });
+  }
+
+  const setActiveChat = async (username) => {
+    const readMessages = async (username) => {
+      // set unread messages to read
+      const activeConvo = conversations.filter((convo) =>
+        convo.otherUser.username === username
+      )[0]
+      const messages = activeConvo.messages.filter((msg) => 
+        !msg.isRead
+      );
+  
+      if (messages.length) {
+        const data = await patchMessages(messages);
+        if (data) {
+          updateUnread(data);
+        }
+      }
+    };
     setActiveConversation(username);
+    await readMessages(username);
   };
 
   const addOnlineUser = useCallback((id) => {
