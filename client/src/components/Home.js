@@ -114,11 +114,13 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
+      let updatedConvo = null;    // issue #2 - add unread msg if msg arrives in active convo
       // issue #1 -- need to set state to a different object
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.id === message.conversationId) {
             const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+            updatedConvo = { ...convo };    // issue #2 - add unread msg if msg arrives in active convo
             convoCopy.messages.push(message);
             convoCopy.latestMessageText = message.text;
             return convoCopy;
@@ -128,11 +130,19 @@ const Home = ({ user, logout }) => {
         });
         return convoCopy;
       });
+      
+      if (updatedConvo.otherUser.username === activeConversation) {
+        if (message.senderId === updatedConvo.otherUser.id) {
+          patchMessages([data.message]);
+          updateUnread({ 'messages': [data.message] });    // format like received message
+        }
+      }
     },
-    [setConversations],
+    [setConversations, activeConversation],
   );
 
-  const patchMessage = async (body) => {
+  const patchMessages = async (body) => {
+
     try {
       const response = await axios.patch("/api/messages", body);
       return response.data;
@@ -144,7 +154,6 @@ const Home = ({ user, logout }) => {
   const readMessages = async (username) => {
     // set unread messages to read
     // called from setActiveChat(username) and addMessageToChat()
-    const copy = conversations;
     const activeConvo = conversations.filter((convo) =>
       convo.otherUser.username === username
     )[0]
@@ -153,7 +162,7 @@ const Home = ({ user, logout }) => {
     );
 
     if (messages.length) {
-      const data = await patchMessage(messages);
+      const data = await patchMessages(messages);
       if (data) {
         updateUnread(data);
       }
@@ -161,16 +170,20 @@ const Home = ({ user, logout }) => {
   };
 
   const updateUnread = (data) => {
-    const copyConvo = [...conversations]; 
     const idsToUpdate = data.messages.map((msg) => msg.id);
-    copyConvo.forEach((convo) => {
-      convo.messages.forEach((msg) => {
+    setConversations((prev) => {
+      const conversationsCopy = prev.map((convo) => {
+        const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+        convoCopy.messages.map((msg) => {
           if (idsToUpdate.includes(msg.id)) {
-              msg.isRead = true
+            msg.isRead = true;
           }
-      })
+          return msg;
+        });
+        return convoCopy;
+      });
+      return conversationsCopy;
     });
-    setConversations(copyConvo);
   }
 
   const setActiveChat = async (username) => {

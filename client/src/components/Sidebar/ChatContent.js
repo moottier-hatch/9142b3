@@ -44,7 +44,7 @@ const ChatContent = ({ conversation }) => {
       </Box>
         {
           nUnread > 0 &&
-          <Box class={classes.notificationWrap}>
+          <Box className={classes.notificationWrap}>
             <MessageNotification conversation={conversation} nUnread={nUnread} />
           </Box>
         }
