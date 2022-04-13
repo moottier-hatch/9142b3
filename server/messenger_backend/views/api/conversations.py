@@ -37,12 +37,10 @@ class Conversations(APIView):
                 convo_dict = {
                     "id": convo.id,
                     "messages": [
-                        # issue 2: unread status -- send isRead flag when downloading convo
                         message.to_dict(["id", "text", "senderId", "createdAt", "isRead"])
                         for message in convo.messages.all()
                     ],
                 }
-                # issue 1: sort messages w/ oldest at top
                 convo_dict["messages"].sort(key=lambda msg: msg["createdAt"])
 
                 # set properties for notification count and latest message preview

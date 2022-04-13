@@ -22,12 +22,11 @@ class Messages(APIView):
             text = body.get("text")
             recipient_id = body.get("recipientId")
             sender = body.get("sender")
-            isRead = body.get("isRead")    # Issue 2: unread status -- get isRead from POST
+            isRead = body.get("isRead")
 
             # if we already know conversation id, we can save time and just add it to message and return
             if conversation_id:
                 conversation = Conversation.objects.filter(id=conversation_id).first()
-                # Issue 2: unread status -- add isRead to model
                 message = Message(
                     senderId=sender_id, text=text, conversation=conversation, isRead=isRead,
                 )
@@ -45,7 +44,6 @@ class Messages(APIView):
                 if sender and sender["id"] in online_users:
                     sender["online"] = True
 
-            # issue 2: unread status -- add isRead to model
             message = Message(senderId=sender_id, text=text, conversation=conversation, isRead=isRead)
             message.save()
             message_json = message.to_dict()
@@ -53,7 +51,6 @@ class Messages(APIView):
         except Exception as e:
             return HttpResponse(status=500)
 
-    # Issue 2: Send unread status
     def patch(self, request):
         """update existing messages via PATCH
         currently only sets isRead flag; no mechanism for updating text/sender/etc

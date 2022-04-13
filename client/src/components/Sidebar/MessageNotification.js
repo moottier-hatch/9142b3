@@ -1,5 +1,3 @@
-// issue #2: unread status
-// MessageNotification component displays # of unread messages for a conversation
 import React from "react";
 
 import { Box } from "@material-ui/core";

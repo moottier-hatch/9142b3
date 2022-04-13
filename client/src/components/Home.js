@@ -62,7 +62,6 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  // issue #1 - func not using async/await
   const postMessage = async (body) => {
     try {
       const data = await saveMessage(body);
@@ -81,7 +80,6 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      // issue #1 -- need to set state to a different object
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.otherUser.id === recipientId) {
@@ -114,13 +112,12 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
-      let updatedConvo = null;    // issue #2 - add unread msg if msg arrives in active convo
-      // issue #1 -- need to set state to a different object
+      let updatedConvo = null;
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.id === message.conversationId) {
             const convoCopy = { ...convo, messages: [ ...convo.messages ] };
-            updatedConvo = { ...convo };    // issue #2 - add unread msg if msg arrives in active convo
+            updatedConvo = { ...convo };
             convoCopy.messages.push(message);
             convoCopy.latestMessageText = message.text;
             return convoCopy;
