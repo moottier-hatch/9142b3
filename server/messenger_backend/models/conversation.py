@@ -18,10 +18,10 @@ class UserConversations(utils.CustomModel):
         unique_together = ('userId', 'conversationId',)
 
 class Conversation(utils.CustomModel):
-    user1 = models.ForeignKey(User, db_column='user1Id', on_delete=models.CASCADE, related_name='+')
-    user2 = models.ForeignKey(User, db_column='user2Id', on_delete=models.CASCADE, related_name='+')
     createdAt = models.DateTimeField(auto_now_add=True, db_index=True)
     updatedAt = models.DateTimeField(auto_now=True)
+    users = models.ManyToManyField(User, through='UserConversations')
+
 
     # find a set of conversation given an iterable containing user Ids
     def find_conversation(users):
