@@ -1,6 +1,7 @@
 from django.contrib.auth.middleware import get_user
 from django.http import HttpResponse, JsonResponse
 from django.db import transaction
+from django.db.models import Q
 from messenger_backend.models import Conversation, Message
 from online_users import online_users
 from rest_framework.views import APIView
@@ -59,6 +60,14 @@ class Messages(APIView):
             user = get_user(request)
             
             if user.is_anonymous:
+                return HttpResponse(status=401)
+
+            # TODO: only allow authorized users (users in the convo)
+            user_id = user.id
+            # FIXME: uncomment when convoId is in data
+            # convo_id = request.data['convoId']
+            # if not len(Conversation.objects.filter((Q(user1=user_id) | Q(user2=user_id)) & Q(pk=convo_id))):
+            if not len(Conversation.objects.filter(Q(user1=user_id) | Q(user2=user_id))):
                 return HttpResponse(status=401)
 
             message_ids = [msg['id'] for msg in request.data]

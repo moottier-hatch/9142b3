@@ -112,14 +112,23 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
-      let updatedConvo = null;
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.id === message.conversationId) {
             const convoCopy = { ...convo, messages: [ ...convo.messages ] };
-            updatedConvo = { ...convo };
+            
+            if (convoCopy.otherUser.username === activeConversation) {
+              if (message.senderId === convoCopy.otherUser.id) {
+                patchConversation({"conversationId": convoCopy.id});
+                message.isRead = true;
+              }
+            } else {
+              convoCopy.nUnread++;
+            }
+
             convoCopy.messages.push(message);
             convoCopy.latestMessageText = message.text;
+
             return convoCopy;
           } else {
             return convo;
@@ -128,56 +137,42 @@ const Home = ({ user, logout }) => {
         return convoCopy;
       });
       
-      if (updatedConvo.otherUser.username === activeConversation) {
-        if (message.senderId === updatedConvo.otherUser.id) {
-          patchMessages([data.message]);
-          updateUnread({ 'messages': [data.message] });    // format like received message
-        }
-      }
     },
     [setConversations, activeConversation],
   );
 
-  const patchMessages = async (body) => {
+  const patchConversation = async (body) => {
     try {
-      const response = await axios.patch("/api/messages", body);
+      const response = await axios.patch("/api/conversations", body);
       return response.data;
     } catch (error) {
       console.error(error);
     }
   }
 
-  const updateUnread = (data) => {
-    const idsToUpdate = data.messages.map((msg) => msg.id);
-    setConversations((prev) => {
-      const conversationsCopy = prev.map((convo) => {
-        const convoCopy = { ...convo, messages: [ ...convo.messages ] };
-        convoCopy.messages.map((msg) => {
-          if (idsToUpdate.includes(msg.id)) {
-            msg.isRead = true;
-          }
-          return msg;
-        });
-        return convoCopy;
-      });
-      return conversationsCopy;
-    });
-  }
-
   const setActiveChat = async (username) => {
     const readMessages = async (username) => {
       // set unread messages to read
-      const activeConvo = conversations.filter((convo) =>
+      const activeConvo = conversations.find((convo) =>
         convo.otherUser.username === username
-      )[0]
+      );
       const messages = activeConvo.messages.filter((msg) => 
         !msg.isRead
       );
   
       if (messages.length) {
-        const data = await patchMessages(messages);
+        const data = await patchConversation({"conversationId": activeConvo.id});
         if (data) {
-          updateUnread(data);
+          setConversations((prev) => {
+            const convoCopy = prev.map((convo) => {
+              if (convo.id === data[0].id) {
+                return { ...convo, nUnread: data[0].nUnread };
+              } else {
+                return convo;
+              }
+            })
+            return convoCopy;
+          });
         }
       }
     };

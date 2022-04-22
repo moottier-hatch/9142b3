@@ -30,7 +30,7 @@ const ChatContent = ({ conversation }) => {
 
   const { otherUser } = conversation;
   const latestMessageText = conversation.id && conversation.latestMessageText;
-  const nUnread = conversation.messages.filter((msg) => !msg.isRead && msg.senderId === otherUser.id).length;
+  const nUnread = conversation.nUnread;
 
   return (
     <Box className={classes.root}>

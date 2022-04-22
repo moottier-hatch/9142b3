@@ -1,5 +1,6 @@
 from django.contrib.auth.middleware import get_user
-from django.db.models import Max, Q
+from django.db.models import Q
+from django.db import transaction
 from django.db.models.query import Prefetch
 from django.http import HttpResponse, JsonResponse
 from messenger_backend.models import Conversation, Message
@@ -40,6 +41,7 @@ class Conversations(APIView):
                         message.to_dict(["id", "text", "senderId", "createdAt", "isRead"])
                         for message in convo.messages.all()
                     ],
+                    "nUnread": convo.messages.filter(isRead=False).filter(~Q(senderId=user_id)).count()
                 }
                 convo_dict["messages"].sort(key=lambda msg: msg["createdAt"])
 
@@ -62,6 +64,71 @@ class Conversations(APIView):
                 key=lambda convo: convo["messages"][0]["createdAt"],
                 reverse=True,
             )
+            return JsonResponse(
+                conversations_response,
+                safe=False,
+            )
+        except Exception as e:
+            print(e)
+            return HttpResponse(status=500)
+
+    # TODO: patch read status for all messages in conversations
+    def patch(self, request: Request):
+        try:
+            user = get_user(request)
+
+            if user.is_anonymous:
+                return HttpResponse(status=401)
+
+            user_id = user.id
+
+            conversation_id = request.data['conversationId']
+            conversations = (
+                Conversation.objects.filter((Q(user1=user_id) | Q(user2=user_id)) & Q(pk=conversation_id))
+                .prefetch_related(
+                    Prefetch(
+                        "messages", queryset=Message.objects.order_by("-createdAt")
+                    )
+                )
+                .all()
+            )
+
+            with transaction.atomic(): 
+                for convo in conversations:
+                    for message in convo.messages.all():
+                        if message.senderId != user_id:
+                            message.isRead = True
+                    Message.objects.bulk_update(convo.messages.all(), ['isRead'])
+
+            conversations_response = []
+            for convo in conversations:
+                convo_dict = {
+                    "id": convo.id,
+                    "messages": [
+                        message.to_dict(["id", "text", "senderId", "createdAt", "isRead"])
+                        for message in convo.messages.all()
+                    ],
+                    "nUnread": convo.messages.filter(isRead=False).filter(~Q(senderId=user_id)).count()
+                }
+
+                # set properties for notification count and latest message preview
+                # set a property "otherUser" so that frontend will have easier access
+                user_fields = ["id", "username", "photoUrl"]
+                if convo.user1 and convo.user1.id != user_id:
+                    convo_dict["otherUser"] = convo.user1.to_dict(user_fields)
+                elif convo.user2 and convo.user2.id != user_id:
+                    convo_dict["otherUser"] = convo.user2.to_dict(user_fields)
+
+                # set property for online status of the other user
+                if convo_dict["otherUser"]["id"] in online_users:
+                    convo_dict["otherUser"]["online"] = True
+                else:
+                    convo_dict["otherUser"]["online"] = False
+
+                convo_dict["messages"].sort(key=lambda msg: msg["createdAt"])
+
+                conversations_response.append(convo_dict)
+
             return JsonResponse(
                 conversations_response,
                 safe=False,
