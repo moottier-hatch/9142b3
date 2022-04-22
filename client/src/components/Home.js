@@ -62,7 +62,6 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  // issue #1 - func not using async/await
   const postMessage = async (body) => {
     try {
       const data = await saveMessage(body);
@@ -81,7 +80,6 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      // issue #1 -- need to set state to a different object
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.otherUser.id === recipientId) {
@@ -114,13 +112,23 @@ const Home = ({ user, logout }) => {
         setConversations((prev) => [newConvo, ...prev]);
       }
 
-      // issue #1 -- need to set state to a different object
       setConversations((prev) => {
         const convoCopy = prev.map((convo) => {
           if (convo.id === message.conversationId) {
             const convoCopy = { ...convo, messages: [ ...convo.messages ] };
+            
+            if (convoCopy.otherUser.username === activeConversation) {
+              if (message.senderId === convoCopy.otherUser.id) {
+                patchConversation({"conversationId": convoCopy.id});
+                message.isRead = true;
+              }
+            } else {
+              convoCopy.nUnread++;
+            }
+
             convoCopy.messages.push(message);
             convoCopy.latestMessageText = message.text;
+
             return convoCopy;
           } else {
             return convo;
@@ -128,12 +136,48 @@ const Home = ({ user, logout }) => {
         });
         return convoCopy;
       });
+      
     },
-    [setConversations],
+    [setConversations, activeConversation],
   );
 
-  const setActiveChat = (username) => {
+  const patchConversation = async (body) => {
+    try {
+      const response = await axios.patch("/api/conversations", body);
+      return response.data;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const setActiveChat = async (username) => {
+    const readMessages = async (username) => {
+      // set unread messages to read
+      const activeConvo = conversations.find((convo) =>
+        convo.otherUser.username === username
+      );
+      const messages = activeConvo.messages.filter((msg) => 
+        !msg.isRead
+      );
+  
+      if (messages.length) {
+        const data = await patchConversation({"conversationId": activeConvo.id});
+        if (data) {
+          setConversations((prev) => {
+            const convoCopy = prev.map((convo) => {
+              if (convo.id === data[0].id) {
+                return { ...convo, nUnread: data[0].nUnread };
+              } else {
+                return convo;
+              }
+            })
+            return convoCopy;
+          });
+        }
+      }
+    };
     setActiveConversation(username);
+    await readMessages(username);
   };
 
   const addOnlineUser = useCallback((id) => {
